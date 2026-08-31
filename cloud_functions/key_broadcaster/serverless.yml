@@ -1,0 +1,36 @@
+service: secure-exam-key-broadcaster
+
+provider:
+  name: aws
+  runtime: python3.12
+  region: ap-south-1
+  timeout: 60
+  memorySize: 256
+  environment:
+    DATABASE_URL: ${ssm:/secure-exam/prod/database-url}
+    KAFKA_BOOTSTRAP_SERVERS: ${ssm:/secure-exam/prod/kafka-servers}
+    KMS_KEY_ID: ${ssm:/secure-exam/prod/kms-key-id}
+    AWS_REGION: ap-south-1
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "kms:Decrypt"
+      Resource: "*"
+    - Effect: "Allow"
+      Action:
+        - "logs:CreateLogGroup"
+        - "logs:CreateLogStream"
+        - "logs:PutLogEvents"
+      Resource: "*"
+
+functions:
+  broadcastKeys:
+    handler: main.handler
+    events:
+      - schedule: rate(1 minute)
+    vpc:
+      securityGroupIds:
+        - ${ssm:/secure-exam/prod/vpc-sg}
+      subnetIds:
+        - ${ssm:/secure-exam/prod/vpc-subnet-1}
+        - ${ssm:/secure-exam/prod/vpc-subnet-2}

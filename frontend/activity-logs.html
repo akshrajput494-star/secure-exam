@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity Logs - Secure Exam Admin</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .page-watermark { position: fixed; bottom: 20px; right: 20px; opacity: 0.06; pointer-events: none; z-index: 0; }
+        .page-watermark img { width: 200px; }
+        .filters { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .filters select, .filters input, .filters button { padding: 8px; }
+    </style>
+</head>
+<body>
+    <div class="page-watermark"><img src="assets/logo.png" alt=""></div>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img src="assets/logo.png" alt="Logo" style="width:40px; margin-bottom:0.5rem;">
+                <h2>Secure Exam</h2>
+                <p>Admin Portal</p>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="dashboard.html">📊 Dashboard</a></li>
+                    <li><a href="exams.html">📝 Exams</a></li>
+                    <li><a href="upload-paper.html">📄 Exam Papers</a></li>
+                    <li><a href="centers.html">🏛️ Centers</a></li>
+                    <li><a href="biometrics.html">🔐 Biometrics</a></li>
+                    <li><a href="users.html">👥 Users</a></li>
+                    <li class="active"><a href="activity-logs.html">📋 Activity Logs</a></li>
+                    <li><a href="settings.html">⚙️ Settings</a></li>
+                    <li><a href="#" onclick="logout(); return false;">🚪 Logout</a></li>
+                </ul>
+            </nav>
+        </aside>
+        <main class="main-content">
+            <h1>Activity Logs</h1>
+            <div class="filters">
+                <input type="date" id="filterDate">
+                <select id="filterCenter"><option value="">All Centers</option></select>
+                <select id="filterAction">
+                    <option value="">All Actions</option>
+                    <option value="Login">Login</option>
+                    <option value="Logout">Logout</option>
+                    <option value="Upload">Upload</option>
+                    <option value="Download">Download</option>
+                    <option value="Create">Create</option>
+                    <option value="Delete">Delete</option>
+                </select>
+                <select id="filterExam"><option value="">All Exams</option></select>
+                <button onclick="loadLogs()" style="background:#007bff; color:#fff; border:none; cursor:pointer;">Apply</button>
+                <button onclick="clearFilters()" style="background:#6c757d; color:#fff; border:none; cursor:pointer;">Clear</button>
+            </div>
+            <table class="data-table" style="width:100%; border-collapse:collapse;">
+                <thead>
+                    <tr style="background:#f4f4f4; text-align:left;">
+                        <th style="padding:10px; border:1px solid #ddd;">User</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Center</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Action</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Exam</th>
+                        <th style="padding:10px; border:1px solid #ddd;">IP Address</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Timestamp</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="logsList"></tbody>
+            </table>
+        </main>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        requireAuth();
+
+        async function initFilters() {
+            try {
+                const [centers, exams] = await Promise.all([
+                    apiFetch('/api/centers/'),
+                    apiFetch('/api/exams/')
+                ]);
+                const cSel = document.getElementById('filterCenter');
+                (centers || []).forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.id; opt.textContent = c.center_name || c.name;
+                    cSel.appendChild(opt);
+                });
+                const eSel = document.getElementById('filterExam');
+                (exams || []).forEach(e => {
+                    const opt = document.createElement('option');
+                    opt.value = e.id; opt.textContent = e.code || e.exam_code;
+                    eSel.appendChild(opt);
+                });
+            } catch (err) {}
+        }
+
+        async function loadLogs() {
+            const date = document.getElementById('filterDate').value;
+            const center_id = document.getElementById('filterCenter').value;
+            const action = document.getElementById('filterAction').value;
+            const exam_id = document.getElementById('filterExam').value;
+
+            const params = new URLSearchParams();
+            if(date) params.append('date', date);
+            if(center_id) params.append('center_id', center_id);
+            if(action) params.append('action', action);
+            if(exam_id) params.append('exam_id', exam_id);
+
+            try {
+                const res = await apiFetch(`/api/logs/?${params.toString()}`);
+                const tbody = document.getElementById('logsList');
+                tbody.innerHTML = '';
+                (res || []).forEach(l => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="padding:10px; border:1px solid #ddd;">${l.username || l.user}</td>
+                        <td style="padding:10px; border:1px solid #ddd;">${l.center_name || '-'}</td>
+                        <td style="padding:10px; border:1px solid #ddd;">${l.action}</td>
+                        <td style="padding:10px; border:1px solid #ddd;">${l.exam_code || '-'}</td>
+                        <td style="padding:10px; border:1px solid #ddd;">${l.ip_address || '-'}</td>
+                        <td style="padding:10px; border:1px solid #ddd;">${l.timestamp}</td>
+                        <td style="padding:10px; border:1px solid #ddd;"><span style="background:#17a2b8; color:white; padding:2px 6px; border-radius:10px; font-size:12px;">Success</span></td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch(err){}
+        }
+
+        function clearFilters() {
+            document.getElementById('filterDate').value = '';
+            document.getElementById('filterCenter').value = '';
+            document.getElementById('filterAction').value = '';
+            document.getElementById('filterExam').value = '';
+            loadLogs();
+        }
+
+        initFilters();
+        loadLogs();
+    </script>
+</body>
+</html>

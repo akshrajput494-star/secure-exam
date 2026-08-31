@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Users - Secure Exam Admin</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .page-watermark { position: fixed; bottom: 20px; right: 20px; opacity: 0.06; pointer-events: none; z-index: 0; }
+        .page-watermark img { width: 200px; }
+        .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index:1000; }
+        .modal-content { background: #fff; margin: 5% auto; padding: 20px; width: 50%; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div class="page-watermark"><img src="assets/logo.png" alt=""></div>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img src="assets/logo.png" alt="Logo" style="width:40px; margin-bottom:0.5rem;">
+                <h2>Secure Exam</h2>
+                <p>Admin Portal</p>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="dashboard.html">📊 Dashboard</a></li>
+                    <li><a href="exams.html">📝 Exams</a></li>
+                    <li><a href="upload-paper.html">📄 Exam Papers</a></li>
+                    <li><a href="centers.html">🏛️ Centers</a></li>
+                    <li><a href="biometrics.html">🔐 Biometrics</a></li>
+                    <li class="active"><a href="users.html">👥 Users</a></li>
+                    <li><a href="activity-logs.html">📋 Activity Logs</a></li>
+                    <li><a href="settings.html">⚙️ Settings</a></li>
+                    <li><a href="#" onclick="logout(); return false;">🚪 Logout</a></li>
+                </ul>
+            </nav>
+        </aside>
+        <main class="main-content">
+            <header class="content-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h1>Users Management</h1>
+                <button onclick="showModal()" style="padding:8px 16px; background:#007bff; color:#fff; border:none; border-radius:4px; cursor:pointer;">+ Add User</button>
+            </header>
+            <table class="data-table" style="width:100%; border-collapse:collapse;">
+                <thead>
+                    <tr style="background:#f4f4f4; text-align:left;">
+                        <th style="padding:10px; border:1px solid #ddd;">Username</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Role</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Center</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Created At</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="usersList"></tbody>
+            </table>
+        </main>
+    </div>
+
+    <div id="userModal" class="modal">
+        <div class="modal-content">
+            <h2>Add User</h2>
+            <form id="userForm" onsubmit="saveUser(event)">
+                <div style="margin-bottom:10px;">
+                    <label>Username</label>
+                    <input type="text" id="username" required style="width:100%; padding:8px;">
+                </div>
+                <div style="margin-bottom:10px;">
+                    <label>Password</label>
+                    <input type="password" id="password" required style="width:100%; padding:8px;">
+                </div>
+                <div style="margin-bottom:10px;">
+                    <label>Role</label>
+                    <select id="role" required style="width:100%; padding:8px;" onchange="toggleCenter()">
+                        <option value="admin">Admin</option>
+                        <option value="center">Center</option>
+                    </select>
+                </div>
+                <div style="margin-bottom:10px;" id="centerDiv" style="display:none;">
+                    <label>Center</label>
+                    <select id="userCenter" style="width:100%; padding:8px;">
+                        <option value="">-- Select Center --</option>
+                    </select>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:10px;">
+                    <button type="button" onclick="closeModal()" style="padding:8px 16px;">Cancel</button>
+                    <button type="submit" style="padding:8px 16px; background:#007bff; color:#fff; border:none;">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        requireAuth();
+
+        function toggleCenter() {
+            const role = document.getElementById('role').value;
+            document.getElementById('centerDiv').style.display = role === 'center' ? 'block' : 'none';
+        }
+
+        async function loadCenters() {
+            try {
+                const res = await apiFetch('/api/centers/');
+                const sel = document.getElementById('userCenter');
+                (res || []).forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.id;
+                    opt.textContent = `${c.center_code} - ${c.center_name || c.name}`;
+                    sel.appendChild(opt);
+                });
+            } catch (err) {}
+        }
+
+        async function loadUsers() {
+            try {
+                const res = await apiFetch('/api/users/');
+                const tbody = document.getElementById('usersList');
+                tbody.innerHTML = '';
+                (res || []).forEach(u => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="padding:10px; border:1px solid #ddd;">${u.username}</td>
+                        <td style="padding:10px; border:1px solid #ddd;">${u.role}</td>
+                        <td style="padding:10px; border:1px solid #ddd;">${u.center_name || '-'}</td>
+                        <td style="padding:10px; border:1px solid #ddd;">${u.created_at || ''}</td>
+                        <td style="padding:10px; border:1px solid #ddd;">
+                            <button onclick="deleteUser('${u.id}')">Delete</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch(err){}
+        }
+
+        function showModal() {
+            document.getElementById('userForm').reset();
+            toggleCenter();
+            document.getElementById('userModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('userModal').style.display = 'none';
+        }
+
+        async function saveUser(e) {
+            e.preventDefault();
+            const payload = {
+                username: document.getElementById('username').value,
+                password: document.getElementById('password').value,
+                role: document.getElementById('role').value,
+                center_id: document.getElementById('role').value === 'center' ? document.getElementById('userCenter').value : null
+            };
+            try {
+                await apiFetch('/api/users/', { method: 'POST', body: JSON.stringify(payload) });
+                closeModal();
+                loadUsers();
+            } catch(err){ alert('Error saving user'); }
+        }
+
+        async function deleteUser(id) {
+            if(confirm('Delete user?')) {
+                try {
+                    await apiFetch(`/api/users/${id}`, { method: 'DELETE' });
+                    loadUsers();
+                } catch(err){}
+            }
+        }
+
+        loadCenters();
+        loadUsers();
+        toggleCenter();
+    </script>
+</body>
+</html>

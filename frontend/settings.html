@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Secure Exam Admin</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .page-watermark { position: fixed; bottom: 20px; right: 20px; opacity: 0.06; pointer-events: none; z-index: 0; }
+        .page-watermark img { width: 200px; }
+        .card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; }
+        .form-group input { width: 100%; max-width: 400px; padding: 8px; }
+    </style>
+</head>
+<body>
+    <div class="page-watermark"><img src="assets/logo.png" alt=""></div>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img src="assets/logo.png" alt="Logo" style="width:40px; margin-bottom:0.5rem;">
+                <h2>Secure Exam</h2>
+                <p>Admin Portal</p>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="dashboard.html">📊 Dashboard</a></li>
+                    <li><a href="exams.html">📝 Exams</a></li>
+                    <li><a href="upload-paper.html">📄 Exam Papers</a></li>
+                    <li><a href="centers.html">🏛️ Centers</a></li>
+                    <li><a href="biometrics.html">🔐 Biometrics</a></li>
+                    <li><a href="users.html">👥 Users</a></li>
+                    <li><a href="activity-logs.html">📋 Activity Logs</a></li>
+                    <li class="active"><a href="settings.html">⚙️ Settings</a></li>
+                    <li><a href="#" onclick="logout(); return false;">🚪 Logout</a></li>
+                </ul>
+            </nav>
+        </aside>
+        <main class="main-content">
+            <h1>Settings</h1>
+            
+            <div class="card">
+                <h2>Change Password</h2>
+                <form onsubmit="event.preventDefault(); alert('Password change simulated.');">
+                    <div class="form-group">
+                        <label>Current Password</label>
+                        <input type="password" required>
+                    </div>
+                    <div class="form-group">
+                        <label>New Password</label>
+                        <input type="password" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm New Password</label>
+                        <input type="password" required>
+                    </div>
+                    <button type="submit" style="padding:10px 20px; background:#007bff; color:#fff; border:none; border-radius:4px; cursor:pointer;">Update Password</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>System Information</h2>
+                <p><strong>Version:</strong> 1.0.0</p>
+                <p><strong>Environment:</strong> Production</p>
+                <p><strong>Server Time:</strong> <span id="serverTime"></span></p>
+            </div>
+
+            <div class="card">
+                <h2>Session Settings</h2>
+                <p><strong>Session Timeout:</strong> 30 minutes</p>
+                <p><strong>Max Concurrent Logins:</strong> 1</p>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        requireAuth();
+        document.getElementById('serverTime').textContent = new Date().toLocaleString();
+    </script>
+</body>
+</html>

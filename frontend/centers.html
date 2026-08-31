@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Centers - Secure Exam Admin</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .page-watermark { position: fixed; bottom: 20px; right: 20px; opacity: 0.06; pointer-events: none; z-index: 0; }
+        .page-watermark img { width: 200px; }
+        .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index:1000; }
+        .modal-content { background: #fff; margin: 5% auto; padding: 20px; width: 50%; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div class="page-watermark"><img src="assets/logo.png" alt=""></div>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img src="assets/logo.png" alt="Logo" style="width:40px; margin-bottom:0.5rem;">
+                <h2>Secure Exam</h2>
+                <p>Admin Portal</p>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="dashboard.html">📊 Dashboard</a></li>
+                    <li><a href="exams.html">📝 Exams</a></li>
+                    <li><a href="upload-paper.html">📄 Exam Papers</a></li>
+                    <li class="active"><a href="centers.html">🏛️ Centers</a></li>
+                    <li><a href="biometrics.html">🔐 Biometrics</a></li>
+                    <li><a href="users.html">👥 Users</a></li>
+                    <li><a href="activity-logs.html">📋 Activity Logs</a></li>
+                    <li><a href="settings.html">⚙️ Settings</a></li>
+                    <li><a href="#" onclick="logout(); return false;">🚪 Logout</a></li>
+                </ul>
+            </nav>
+        </aside>
+        <main class="main-content">
+            <header class="content-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h1>Centers Management</h1>
+                <button onclick="showModal()" style="padding:8px 16px; background:#007bff; color:#fff; border:none; border-radius:4px; cursor:pointer;">+ Add Center</button>
+            </header>
+            <table class="data-table" style="width:100%; border-collapse:collapse;" id="centersTable">
+                <thead>
+                    <tr style="background:#f4f4f4; text-align:left;">
+                        <th style="padding:10px; border:1px solid #ddd;">Center Code</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Name</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Address</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Status</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="centersList"></tbody>
+            </table>
+        </main>
+    </div>
+
+    <!-- Modal -->
+    <div id="centerModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Add Center</h2>
+            <form id="centerForm" onsubmit="saveCenter(event)">
+                <input type="hidden" id="centerId">
+                <div style="margin-bottom:10px;">
+                    <label>Center Code</label>
+                    <input type="text" id="centerCode" required style="width:100%; padding:8px;">
+                </div>
+                <div style="margin-bottom:10px;">
+                    <label>Center Name</label>
+                    <input type="text" id="centerName" required style="width:100%; padding:8px;">
+                </div>
+                <div style="margin-bottom:10px;">
+                    <label>Address</label>
+                    <input type="text" id="centerAddress" required style="width:100%; padding:8px;">
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:10px;">
+                    <button type="button" onclick="closeModal()" style="padding:8px 16px;">Cancel</button>
+                    <button type="submit" style="padding:8px 16px; background:#007bff; color:#fff; border:none;">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        requireAuth();
+
+        async function loadCenters() {
+            try {
+                const res = await apiFetch('/api/centers/');
+                const tbody = document.getElementById('centersList');
+                tbody.innerHTML = '';
+                (res || []).forEach(c => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="padding:10px; border:1px solid #ddd;">${c.center_code}</td>
+                        <td style="padding:10px; border:1px solid #ddd;">${c.center_name || c.name}</td>
+                        <td style="padding:10px; border:1px solid #ddd;">${c.address}</td>
+                        <td style="padding:10px; border:1px solid #ddd;"><span style="background:#28a745; color:white; padding:2px 6px; border-radius:10px; font-size:12px;">Active</span></td>
+                        <td style="padding:10px; border:1px solid #ddd;">
+                            <button onclick='editCenter(${JSON.stringify(c)})'>Edit</button>
+                            <button onclick="deleteCenter('${c.id}')">Delete</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function showModal() {
+            document.getElementById('centerForm').reset();
+            document.getElementById('centerId').value = '';
+            document.getElementById('modalTitle').innerText = 'Add Center';
+            document.getElementById('centerModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('centerModal').style.display = 'none';
+        }
+
+        function editCenter(c) {
+            document.getElementById('centerId').value = c.id;
+            document.getElementById('centerCode').value = c.center_code || '';
+            document.getElementById('centerName').value = c.center_name || c.name || '';
+            document.getElementById('centerAddress').value = c.address || '';
+            document.getElementById('modalTitle').innerText = 'Edit Center';
+            document.getElementById('centerModal').style.display = 'block';
+        }
+
+        async function saveCenter(e) {
+            e.preventDefault();
+            const id = document.getElementById('centerId').value;
+            const payload = {
+                center_code: document.getElementById('centerCode').value,
+                center_name: document.getElementById('centerName').value,
+                address: document.getElementById('centerAddress').value
+            };
+            try {
+                if (id) {
+                    await apiFetch(`/api/centers/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+                } else {
+                    await apiFetch('/api/centers/', { method: 'POST', body: JSON.stringify(payload) });
+                }
+                closeModal();
+                loadCenters();
+            } catch (err) {
+                alert('Error saving center');
+            }
+        }
+
+        async function deleteCenter(id) {
+            if (confirm('Delete this center?')) {
+                try {
+                    await apiFetch(`/api/centers/${id}`, { method: 'DELETE' });
+                    loadCenters();
+                } catch (err) {
+                    alert('Error deleting');
+                }
+            }
+        }
+
+        loadCenters();
+    </script>
+</body>
+</html>

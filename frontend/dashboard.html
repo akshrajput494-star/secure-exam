@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Secure Exam Portal</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <style>
+        .hero-banner {
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 2rem;
+            position: relative;
+            height: 200px;
+        }
+        .hero-banner img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .hero-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(11,35,65,0.85));
+            padding: 1.5rem;
+            color: #fff;
+        }
+        .hero-overlay h2 { margin: 0 0 0.25rem; font-size: 1.5rem; }
+        .hero-overlay p { margin: 0; opacity: 0.9; font-size: 0.9rem; }
+        .page-watermark {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            opacity: 0.06;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .page-watermark img { width: 200px; }
+    </style>
+</head>
+<body>
+    <div class="page-watermark"><img src="assets/logo.png" alt=""></div>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img src="assets/logo.png" alt="Logo" style="width:40px; margin-bottom:0.5rem;">
+                <h2>Secure Exam</h2>
+                <p>Admin Portal</p>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="active"><a href="dashboard.html">📊 Dashboard</a></li>
+                    <li><a href="exams.html">📝 Exams</a></li>
+                    <li><a href="upload-paper.html">📄 Exam Papers</a></li>
+                    <li><a href="centers.html">🏛️ Centers</a></li>
+                    <li><a href="users.html">👥 Users</a></li>
+                    <li><a href="activity-logs.html">📋 Activity Logs</a></li>
+                    <li><a href="settings.html">⚙️ Settings</a></li>
+                    <li><a href="#" onclick="logout(); return false;">🚪 Logout</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-header">
+                <div class="header-title"><h1>Dashboard</h1></div>
+                <div class="header-user" id="userDisplay">Admin</div>
+            </header>
+
+            <div class="content-wrapper">
+                <!-- Hero Banner with exam image -->
+                <div class="hero-banner">
+                    <img src="assets/exam_classroom.jpg" alt="Examination Hall">
+                    <div class="hero-overlay">
+                        <h2>Welcome to Secure Exam Portal</h2>
+                        <p>Manage examinations, centers, and papers securely from one place</p>
+                    </div>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">🏛️</div>
+                        <div class="stat-info">
+                            <div class="stat-title">Total Centers</div>
+                            <div class="stat-value" id="statCenters">--</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📝</div>
+                        <div class="stat-info">
+                            <div class="stat-title">Scheduled Exams</div>
+                            <div class="stat-value" id="statExams">--</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📤</div>
+                        <div class="stat-info">
+                            <div class="stat-title">Files Uploaded</div>
+                            <div class="stat-value" id="statUploaded">--</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">📥</div>
+                        <div class="stat-info">
+                            <div class="stat-title">Downloads</div>
+                            <div class="stat-value" id="statDownloaded">--</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Two Column Grid -->
+                <div class="dashboard-grid">
+                    <div class="card">
+                        <div class="card-header"><h3>Upcoming Examinations</h3></div>
+                        <div class="card-body">
+                            <table class="data-table">
+                                <thead>
+                                    <tr><th>Date</th><th>Code</th><th>Subject</th><th>Time</th><th>Status</th></tr>
+                                </thead>
+                                <tbody id="upcomingExamsBody">
+                                    <tr><td colspan="5" style="text-align:center;color:#999;">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><h3>Recent Activity</h3></div>
+                        <div class="card-body">
+                            <ul class="activity-list" id="activityList">
+                                <li style="color:#999;">Loading...</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Security Alerts -->
+                <div class="card" style="margin-top: 1.5rem;">
+                    <div class="card-header"><h3>Security Alerts</h3></div>
+                    <div class="card-body">
+                        <div style="color: #28a745; padding: 0.75rem; background: #d4edda; border-radius: 6px;">
+                            ✅ No security alerts. System operating normally.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            requireAuth();
+
+            const user = getUser();
+            if (user) {
+                document.getElementById('userDisplay').textContent = 'Admin: ' + user.username;
+            }
+
+            try {
+                // Fetch REAL stats from the API
+                const stats = await apiFetch('/dashboard/stats');
+                document.getElementById('statCenters').textContent = stats.total_centers || 0;
+                document.getElementById('statExams').textContent = stats.scheduled_exams || 0;
+                document.getElementById('statUploaded').textContent = stats.total_papers || 0;
+                document.getElementById('statDownloaded').textContent = stats.downloads_count || 0;
+
+                // Upcoming Exams
+                const tbody = document.getElementById('upcomingExamsBody');
+                if (stats.upcoming_exams && stats.upcoming_exams.length > 0) {
+                    tbody.innerHTML = stats.upcoming_exams.map(e => `
+                        <tr>
+                            <td>${e.date}</td>
+                            <td><strong>${e.exam_code}</strong></td>
+                            <td>${e.exam_name || e.subject || ''}</td>
+                            <td>${e.time}</td>
+                            <td><span class="status-badge status-scheduled">Scheduled</span></td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999;">No upcoming exams</td></tr>';
+                }
+
+                // Recent Activity
+                const actList = document.getElementById('activityList');
+                if (stats.recent_activity && stats.recent_activity.length > 0) {
+                    actList.innerHTML = stats.recent_activity.map(a => `
+                        <li>
+                            <strong>${a.action}</strong> ${a.user ? 'by ' + a.user : ''}
+                            <span class="activity-date">${new Date(a.timestamp).toLocaleString()}</span>
+                        </li>
+                    `).join('');
+                } else {
+                    actList.innerHTML = '<li style="color:#999;">No recent activity</li>';
+                }
+            } catch (error) {
+                console.error('Dashboard load error:', error);
+            }
+        });
+    </script>
+</body>
+</html>

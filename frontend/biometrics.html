@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biometrics - Secure Exam Admin</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .page-watermark { position: fixed; bottom: 20px; right: 20px; opacity: 0.06; pointer-events: none; z-index: 0; }
+        .page-watermark img { width: 200px; }
+        .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index:1000; }
+        .modal-content { background: #fff; margin: 5% auto; padding: 20px; width: 50%; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div class="page-watermark"><img src="assets/logo.png" alt=""></div>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img src="assets/logo.png" alt="Logo" style="width:40px; margin-bottom:0.5rem;">
+                <h2>Secure Exam</h2>
+                <p>Admin Portal</p>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="dashboard.html">📊 Dashboard</a></li>
+                    <li><a href="exams.html">📝 Exams</a></li>
+                    <li><a href="upload-paper.html">📄 Exam Papers</a></li>
+                    <li><a href="centers.html">🏛️ Centers</a></li>
+                    <li class="active"><a href="biometrics.html">🔐 Biometrics</a></li>
+                    <li><a href="users.html">👥 Users</a></li>
+                    <li><a href="activity-logs.html">📋 Activity Logs</a></li>
+                    <li><a href="settings.html">⚙️ Settings</a></li>
+                    <li><a href="#" onclick="logout(); return false;">🚪 Logout</a></li>
+                </ul>
+            </nav>
+        </aside>
+        <main class="main-content">
+            <header class="content-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h1>Biometrics Management</h1>
+                <button onclick="showModal()" style="padding:8px 16px; background:#007bff; color:#fff; border:none; border-radius:4px; cursor:pointer;">+ Upload Biometric</button>
+            </header>
+            <table class="data-table" style="width:100%; border-collapse:collapse;">
+                <thead>
+                    <tr style="background:#f4f4f4; text-align:left;">
+                        <th style="padding:10px; border:1px solid #ddd;">Center</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Head Name</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Designation</th>
+                        <th style="padding:10px; border:1px solid #ddd;">File</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Upload Date</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="bioList"></tbody>
+            </table>
+        </main>
+    </div>
+
+    <!-- Modal -->
+    <div id="bioModal" class="modal">
+        <div class="modal-content">
+            <h2>Upload Biometric Data</h2>
+            <form id="bioForm" onsubmit="uploadBio(event)">
+                <div style="margin-bottom:10px;">
+                    <label>Center</label>
+                    <select id="bioCenter" required style="width:100%; padding:8px;">
+                        <option value="">-- Select Center --</option>
+                    </select>
+                </div>
+                <div style="margin-bottom:10px;">
+                    <label>Head Name</label>
+                    <input type="text" id="headName" required style="width:100%; padding:8px;">
+                </div>
+                <div style="margin-bottom:10px;">
+                    <label>Designation</label>
+                    <input type="text" id="designation" required style="width:100%; padding:8px;">
+                </div>
+                <div style="margin-bottom:10px;">
+                    <label>File</label>
+                    <input type="file" id="bioFile" required style="width:100%; padding:8px;">
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:10px;">
+                    <button type="button" onclick="closeModal()" style="padding:8px 16px;">Cancel</button>
+                    <button type="submit" style="padding:8px 16px; background:#007bff; color:#fff; border:none;">Upload</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        requireAuth();
+
+        async function loadCenters() {
+            try {
+                const res = await apiFetch('/api/centers/');
+                const sel = document.getElementById('bioCenter');
+                (res || []).forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.id;
+                    opt.textContent = `${c.center_code} - ${c.center_name || c.name}`;
+                    sel.appendChild(opt);
+                });
+            } catch (err) { console.error(err); }
+        }
+
+        async function loadBio() {
+            try {
+                const res = await apiFetch('/api/biometrics/');
+                const tbody = document.getElementById('bioList');
+                tbody.innerHTML = '';
+                (res || []).forEach(b => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="padding:10px; border:1px solid #ddd;">${b.center_name || b.center_id}</td>
+                        <td style="padding:10px; border:1px solid #ddd;">${b.head_name}</td>
+                        <td style="padding:10px; border:1px solid #ddd;">${b.designation}</td>
+                        <td style="padding:10px; border:1px solid #ddd;">${b.filename || 'File'}</td>
+                        <td style="padding:10px; border:1px solid #ddd;">${b.created_at || b.date || ''}</td>
+                        <td style="padding:10px; border:1px solid #ddd;">
+                            <button onclick="deleteBio('${b.id}')">Delete</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } catch (err) { console.error(err); }
+        }
+
+        function showModal() {
+            document.getElementById('bioForm').reset();
+            document.getElementById('bioModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('bioModal').style.display = 'none';
+        }
+
+        async function uploadBio(e) {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('center_id', document.getElementById('bioCenter').value);
+            formData.append('head_name', document.getElementById('headName').value);
+            formData.append('designation', document.getElementById('designation').value);
+            formData.append('file', document.getElementById('bioFile').files[0]);
+
+            try {
+                const token = localStorage.getItem('token');
+                const res = await fetch('/api/biometrics/', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+                if(!res.ok) throw new Error('Upload failed');
+                closeModal();
+                loadBio();
+            } catch (err) { alert('Error uploading'); }
+        }
+
+        async function deleteBio(id) {
+            if(confirm('Delete?')) {
+                try {
+                    await apiFetch(`/api/biometrics/${id}`, { method: 'DELETE' });
+                    loadBio();
+                } catch(err) { alert('Error deleting'); }
+            }
+        }
+
+        loadCenters();
+        loadBio();
+    </script>
+</body>
+</html>

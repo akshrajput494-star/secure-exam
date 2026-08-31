@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Secure Exam Portal</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #0b2341, #16365d);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .login-card {
+            background: #fff;
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 420px;
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .login-header img {
+            width: 80px;
+            margin-bottom: 0.75rem;
+        }
+        .login-header h1 {
+            color: #0b2341;
+            margin: 0;
+            font-size: 1.6rem;
+        }
+        .login-header p {
+            color: #666;
+            margin-top: 0.25rem;
+            font-size: 0.9rem;
+        }
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #333;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 0.8rem 1rem;
+            border: 1px solid #d0d5dd;
+            border-radius: 6px;
+            font-size: 1rem;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+        }
+        .password-container {
+            position: relative;
+        }
+        .password-container input {
+            padding-right: 60px;
+        }
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #007bff;
+            font-size: 0.85rem;
+            font-weight: 500;
+            user-select: none;
+        }
+        .btn-login {
+            background: linear-gradient(135deg, #0b2341, #16365d);
+            color: white;
+            border: none;
+            padding: 0.85rem;
+            width: 100%;
+            border-radius: 6px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn-login:hover { opacity: 0.9; }
+        .btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
+        .error-message {
+            color: #dc3545;
+            background: #f8d7da;
+            padding: 0.6rem 0.8rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            display: none;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+        .login-footer {
+            margin-top: 1.25rem;
+            text-align: center;
+            font-size: 0.85rem;
+        }
+        .login-footer a { color: #007bff; text-decoration: none; }
+        .security-notice {
+            margin-top: 1.5rem;
+            text-align: center;
+            font-size: 0.75rem;
+            color: #999;
+            border-top: 1px solid #eee;
+            padding-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <div class="login-header">
+            <img src="assets/logo.png" alt="Secure Exam Logo">
+            <h1>Secure Exam Portal</h1>
+            <p>Authorized Personnel Only</p>
+        </div>
+
+        <div id="errorMessage" class="error-message"></div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Username / Center ID</label>
+                <input type="text" id="username" name="username" placeholder="Enter your username" required autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <div class="password-container">
+                    <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                    <span class="toggle-password" id="togglePassword">Show</span>
+                </div>
+            </div>
+            <button type="submit" class="btn-login" id="loginBtn">Secure Login</button>
+        </form>
+
+        <div class="login-footer">
+            <a href="#">Forgot Password?</a>
+        </div>
+
+        <div class="security-notice">
+            <p>🔒 Unauthorized access is strictly prohibited.<br>All activities are monitored and logged.</p>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script>
+        // Toggle password visibility
+        document.getElementById('togglePassword').addEventListener('click', function() {
+            const pwd = document.getElementById('password');
+            if (pwd.type === 'password') {
+                pwd.type = 'text';
+                this.textContent = 'Hide';
+            } else {
+                pwd.type = 'password';
+                this.textContent = 'Show';
+            }
+        });
+
+        // Handle login
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('errorMessage');
+            const btn = document.getElementById('loginBtn');
+
+            if (!username || !password) {
+                errorDiv.textContent = 'Please enter both username and password';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            try {
+                btn.disabled = true;
+                btn.textContent = 'Authenticating...';
+                errorDiv.style.display = 'none';
+
+                const data = await apiFetch('/auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ username, password })
+                });
+
+                // Store using the SAME keys that api.js reads
+                localStorage.setItem('secure_exam_token', data.token);
+                localStorage.setItem('secure_exam_user', JSON.stringify(data.user));
+
+                if (data.user.role === 'admin') {
+                    window.location.href = 'dashboard.html';
+                } else {
+                    window.location.href = 'center-dashboard.html';
+                }
+            } catch (error) {
+                errorDiv.textContent = error.message || 'Login failed. Please check your credentials.';
+                errorDiv.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Secure Login';
+            }
+        });
+
+        // If already logged in, redirect
+        if (localStorage.getItem('secure_exam_token')) {
+            const u = JSON.parse(localStorage.getItem('secure_exam_user') || '{}');
+            window.location.href = u.role === 'admin' ? 'dashboard.html' : 'center-dashboard.html';
+        }
+    </script>
+</body>
+</html>

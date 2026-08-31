@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exams - Secure Exam Admin</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .page-watermark { position: fixed; bottom: 20px; right: 20px; opacity: 0.06; pointer-events: none; z-index: 0; }
+        .page-watermark img { width: 200px; }
+        .hero-banner { width: 100%; height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 20px; }
+        .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index:1000; }
+        .modal-content { background: #fff; margin: 5% auto; padding: 20px; width: 50%; border-radius: 8px; }
+    </style>
+</head>
+<body>
+    <div class="page-watermark"><img src="assets/logo.png" alt=""></div>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img src="assets/logo.png" alt="Logo" style="width:40px; margin-bottom:0.5rem;">
+                <h2>Secure Exam</h2>
+                <p>Admin Portal</p>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="dashboard.html">📊 Dashboard</a></li>
+                    <li class="active"><a href="exams.html">📝 Exams</a></li>
+                    <li><a href="upload-paper.html">📄 Exam Papers</a></li>
+                    <li><a href="centers.html">🏛️ Centers</a></li>
+                    <li><a href="biometrics.html">🔐 Biometrics</a></li>
+                    <li><a href="users.html">👥 Users</a></li>
+                    <li><a href="activity-logs.html">📋 Activity Logs</a></li>
+                    <li><a href="settings.html">⚙️ Settings</a></li>
+                    <li><a href="#" onclick="logout(); return false;">🚪 Logout</a></li>
+                </ul>
+            </nav>
+        </aside>
+        <main class="main-content">
+            <img src="assets/exam_classroom.jpg" alt="Hero" class="hero-banner">
+            <header class="content-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h1>Exams Management</h1>
+                <div style="display:flex; gap:10px;">
+                    <input type="text" id="searchInput" placeholder="Search exams..." onkeyup="filterExams()" style="padding:8px;">
+                    <button onclick="showModal()" style="padding:8px 16px; background:#007bff; color:#fff; border:none; border-radius:4px; cursor:pointer;">+ Create Exam</button>
+                </div>
+            </header>
+            <table class="data-table" style="width:100%; border-collapse:collapse;" id="examsTable">
+                <thead>
+                    <tr style="background:#f4f4f4; text-align:left;">
+                        <th style="padding:10px; border:1px solid #ddd;">Exam Code</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Name</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Subject</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Date</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Time</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Duration</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Status</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="examsList"></tbody>
+            </table>
+        </main>
+    </div>
+
+    <!-- Modal -->
+    <div id="examModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Create Exam</h2>
+            <form id="examForm" onsubmit="saveExam(event)">
+                <input type="hidden" id="examId">
+                <div style="margin-bottom:10px;">
+                    <label>Exam Code</label>
+                    <input type="text" id="examCode" required style="width:100%; padding:8px;">
+                </div>
+                <div style="margin-bottom:10px;">
+                    <label>Name</label>
+                    <input type="text" id="examName" required style="width:100%; padding:8px;">
+                </div>
+                <div style="margin-bottom:10px;">
+                    <label>Subject</label>
+                    <input type="text" id="examSubject" required style="width:100%; padding:8px;">
+                </div>
+                <div style="display:flex; gap:10px; margin-bottom:10px;">
+                    <div style="flex:1;">
+                        <label>Date</label>
+                        <input type="date" id="examDate" required style="width:100%; padding:8px;">
+                    </div>
+                    <div style="flex:1;">
+                        <label>Time</label>
+                        <input type="time" id="examTime" required style="width:100%; padding:8px;">
+                    </div>
+                </div>
+                <div style="margin-bottom:10px;">
+                    <label>Duration (mins)</label>
+                    <input type="number" id="examDuration" required style="width:100%; padding:8px;">
+                </div>
+                <div style="margin-bottom:10px;">
+                    <label>Status</label>
+                    <select id="examStatus" style="width:100%; padding:8px;">
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                    </select>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:10px;">
+                    <button type="button" onclick="closeModal()" style="padding:8px 16px;">Cancel</button>
+                    <button type="submit" style="padding:8px 16px; background:#007bff; color:#fff; border:none;">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        requireAuth();
+        let examsData = [];
+
+        async function loadExams() {
+            try {
+                const res = await apiFetch('/api/exams/');
+                examsData = res || [];
+                renderExams(examsData);
+            } catch (err) {
+                console.error('Failed to load exams', err);
+            }
+        }
+
+        function renderExams(data) {
+            const tbody = document.getElementById('examsList');
+            tbody.innerHTML = '';
+            data.forEach(ex => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="padding:10px; border:1px solid #ddd;">${ex.code || ex.exam_code}</td>
+                    <td style="padding:10px; border:1px solid #ddd;">${ex.name}</td>
+                    <td style="padding:10px; border:1px solid #ddd;">${ex.subject}</td>
+                    <td style="padding:10px; border:1px solid #ddd;">${ex.date}</td>
+                    <td style="padding:10px; border:1px solid #ddd;">${ex.time}</td>
+                    <td style="padding:10px; border:1px solid #ddd;">${ex.duration}</td>
+                    <td style="padding:10px; border:1px solid #ddd;"><span style="background:#28a745; color:white; padding:2px 6px; border-radius:10px; font-size:12px;">${ex.status || 'Active'}</span></td>
+                    <td style="padding:10px; border:1px solid #ddd;">
+                        <button onclick='editExam(${JSON.stringify(ex)})'>Edit</button>
+                        <button onclick="deleteExam('${ex.id}')">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterExams() {
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = examsData.filter(ex => 
+                (ex.name && ex.name.toLowerCase().includes(term)) || 
+                (ex.code && ex.code.toLowerCase().includes(term)) ||
+                (ex.exam_code && ex.exam_code.toLowerCase().includes(term))
+            );
+            renderExams(filtered);
+        }
+
+        function showModal() {
+            document.getElementById('examForm').reset();
+            document.getElementById('examId').value = '';
+            document.getElementById('modalTitle').innerText = 'Create Exam';
+            document.getElementById('examModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('examModal').style.display = 'none';
+        }
+
+        function editExam(ex) {
+            document.getElementById('examId').value = ex.id;
+            document.getElementById('examCode').value = ex.code || ex.exam_code || '';
+            document.getElementById('examName').value = ex.name || '';
+            document.getElementById('examSubject').value = ex.subject || '';
+            document.getElementById('examDate').value = ex.date || '';
+            document.getElementById('examTime').value = ex.time || '';
+            document.getElementById('examDuration').value = ex.duration || '';
+            document.getElementById('examStatus').value = ex.status || 'Active';
+            document.getElementById('modalTitle').innerText = 'Edit Exam';
+            document.getElementById('examModal').style.display = 'block';
+        }
+
+        async function saveExam(e) {
+            e.preventDefault();
+            const id = document.getElementById('examId').value;
+            const payload = {
+                exam_code: document.getElementById('examCode').value,
+                name: document.getElementById('examName').value,
+                subject: document.getElementById('examSubject').value,
+                date: document.getElementById('examDate').value,
+                time: document.getElementById('examTime').value,
+                duration: document.getElementById('examDuration').value,
+                status: document.getElementById('examStatus').value
+            };
+            try {
+                if (id) {
+                    await apiFetch(`/api/exams/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+                } else {
+                    await apiFetch('/api/exams/', { method: 'POST', body: JSON.stringify(payload) });
+                }
+                closeModal();
+                loadExams();
+            } catch (err) {
+                alert('Error saving exam');
+            }
+        }
+
+        async function deleteExam(id) {
+            if (confirm('Are you sure you want to delete this exam?')) {
+                try {
+                    await apiFetch(`/api/exams/${id}`, { method: 'DELETE' });
+                    loadExams();
+                } catch (err) {
+                    alert('Error deleting exam');
+                }
+            }
+        }
+
+        loadExams();
+    </script>
+</body>
+</html>

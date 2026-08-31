@@ -1,0 +1,13 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+.env
+.DS_Store
+backend/uploads/*
+database/*.db
+.vscode/
+.idea/
+*.zip
+.dart_tool/
+build/

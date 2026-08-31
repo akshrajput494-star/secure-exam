@@ -1,0 +1,85 @@
+/* Tablet */
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 200px;
+  }
+  
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .stat-value {
+    font-size: 2rem;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .app-container {
+    flex-direction: column;
+  }
+  
+  .sidebar {
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 1rem;
+  }
+  
+  .sidebar-header {
+    border-bottom: none;
+    padding: 0.5rem;
+  }
+  
+  .sidebar-nav {
+    display: none; /* In a real app, wire up a hamburger menu */
+    width: 100%;
+    flex-direction: column;
+    position: absolute;
+    top: 60px;
+    left: 0;
+    background: var(--primary-color);
+    padding: 0;
+  }
+  
+  .sidebar.nav-open .sidebar-nav {
+    display: flex;
+  }
+  
+  .sidebar-nav li a {
+    padding: 1rem;
+    border-left: none;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .content-wrapper {
+    padding: 1rem;
+  }
+  
+  .top-header {
+    padding: 1rem;
+  }
+  
+  .modal-content {
+    width: 95%;
+    margin: 10px;
+    padding: 1.5rem;
+  }
+  
+  .filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .data-table td .btn {
+    margin-bottom: 0.25rem;
+    display: block;
+    width: 100%;
+  }
+}

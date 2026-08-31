@@ -1,0 +1,72 @@
+version: '3.9'
+services:
+  kafka:
+    image: apache/kafka:3.8.0   # KRaft mode, no Zookeeper
+    ports:
+      - '9092:9092'
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+      CLUSTER_ID: 'SecureExamCluster01'
+    healthcheck:
+      test: ['CMD-SHELL', '/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server kafka:9092']
+      interval: 10s
+      timeout: 10s
+      retries: 5
+  
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_DB: secure_exam
+      POSTGRES_USER: secure_exam
+      POSTGRES_PASSWORD: local_dev_password_change_me
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U secure_exam']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  
+  kafka-ui:
+    image: redpandadata/console:latest
+    ports:
+      - '8080:8080'
+    environment:
+      KAFKA_BROKERS: kafka:9092
+    depends_on:
+      kafka:
+        condition: service_healthy
+  
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    ports:
+      - '8000:8000'
+    environment:
+      DATABASE_URL: postgresql+asyncpg://secure_exam:local_dev_password_change_me@postgres:5432/secure_exam
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      APP_ENV: dev
+      JWT_SECRET_KEY: local-dev-jwt-secret-change-in-production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    volumes:
+      - ../backend/app:/app/app  # Hot reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  postgres_data:

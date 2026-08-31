@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Viewer - Secure Exam</title>
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; overflow: hidden; }
+        .header { background: #333; color: #fff; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { margin: 0; font-size: 1.2rem; }
+        .pdf-container { position: relative; height: calc(100vh - 60px); width: 100%; background: #525659; }
+        .pdf-embed { width: 100%; height: 100%; border: none; }
+        
+        /* Watermark overlays */
+        .text-watermark {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 10;
+            display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+            overflow: hidden; opacity: 0.15;
+        }
+        .text-watermark-item { font-size: 24px; font-weight: bold; color: #000; transform: rotate(-45deg); margin: 50px; white-space: nowrap; }
+        
+        .page-watermark { position: absolute; bottom: 20px; right: 20px; opacity: 0.1; pointer-events: none; z-index: 5; }
+        .page-watermark img { width: 300px; }
+        
+        @media print {
+            .header, button { display: none !important; }
+            .pdf-container { height: 100%; }
+            /* Force watermarks to print */
+            .text-watermark { opacity: 0.3 !important; }
+            .page-watermark { opacity: 0.3 !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 id="examTitle">Loading Exam...</h1>
+        <div>
+            <span id="liveTime" style="margin-right:20px;"></span>
+            <button onclick="window.print()" style="padding:8px 16px; background:#007bff; color:#fff; border:none; border-radius:4px; cursor:pointer;">Print</button>
+            <button onclick="window.close()" style="padding:8px 16px; background:#6c757d; color:#fff; border:none; border-radius:4px; cursor:pointer; margin-left:10px;">Close</button>
+        </div>
+    </div>
+    
+    <div class="pdf-container">
+        <!-- PDF Embed -->
+        <iframe id="pdfFrame" class="pdf-embed" src="about:blank"></iframe>
+        
+        <!-- Repeating Text Watermark -->
+        <div class="text-watermark" id="textWatermarkContainer"></div>
+        
+        <!-- Logo Watermark -->
+        <div class="page-watermark"><img src="assets/logo.png" alt=""></div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        requireAuth();
+        
+        let centerCode = 'CENTER';
+        const user = getUser();
+        if(user && user.center_code) centerCode = user.center_code;
+
+        function updateTimeAndWatermark() {
+            const now = new Date();
+            const timeStr = now.toLocaleString();
+            document.getElementById('liveTime').textContent = timeStr;
+            
+            const watermarkText = `${centerCode} - ${timeStr}`;
+            
+            const container = document.getElementById('textWatermarkContainer');
+            if (container.children.length === 0) {
+                // Populate repeating items
+                for(let i=0; i<30; i++) {
+                    const div = document.createElement('div');
+                    div.className = 'text-watermark-item';
+                    div.textContent = watermarkText;
+                    container.appendChild(div);
+                }
+            } else {
+                // Update text
+                Array.from(container.children).forEach(el => el.textContent = watermarkText);
+            }
+        }
+
+        setInterval(updateTimeAndWatermark, 1000);
+        updateTimeAndWatermark();
+
+        async function loadPaper() {
+            const params = new URLSearchParams(window.location.search);
+            const examId = params.get('exam_id');
+            if(!examId) {
+                document.getElementById('examTitle').textContent = 'Error: No Exam ID';
+                return;
+            }
+
+            try {
+                // Ideally fetch exam details to show title
+                const exams = await apiFetch('/api/exams/');
+                const ex = exams.find(e => e.id == examId);
+                if(ex) {
+                    document.getElementById('examTitle').textContent = `${ex.code || ex.exam_code} - ${ex.name}`;
+                }
+
+                // Fetch paper list for this exam
+                const papers = await apiFetch(`/api/exams/${examId}/papers`);
+                if(papers && papers.length > 0) {
+                    // Just show the first one or the specific one
+                    const paper = papers[0];
+                    // Using download endpoint for viewing
+                    const token = localStorage.getItem('token');
+                    // We can embed the authenticated fetch directly by creating an object URL if the API requires auth
+                    const res = await fetch(`/api/exams/${examId}/download/${paper.id}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if(res.ok) {
+                        const blob = await res.blob();
+                        const url = URL.createObjectURL(blob);
+                        document.getElementById('pdfFrame').src = url;
+                        
+                        // Log download/view activity
+                        apiFetch('/api/logs/', {
+                            method: 'POST',
+                            body: JSON.stringify({ action: 'Download', exam_id: examId })
+                        }).catch(e => console.log('log err', e));
+                    } else {
+                        document.getElementById('examTitle').textContent += ' (Failed to load PDF)';
+                    }
+                } else {
+                    document.getElementById('examTitle').textContent += ' (No paper uploaded)';
+                }
+            } catch(err) {
+                console.error(err);
+                document.getElementById('examTitle').textContent = 'Error loading exam paper';
+            }
+        }
+
+        loadPaper();
+    </script>
+</body>
+</html>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Exam Paper - Secure Exam Admin</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .page-watermark { position: fixed; bottom: 20px; right: 20px; opacity: 0.06; pointer-events: none; z-index: 0; }
+        .page-watermark img { width: 200px; }
+        .hero-banner { width: 100%; height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 20px; }
+        .upload-zone { border: 2px dashed #007bff; border-radius: 8px; padding: 40px; text-align: center; cursor: pointer; background: #f8f9fa; margin-bottom:20px; }
+        .upload-zone:hover { background: #e9ecef; }
+    </style>
+</head>
+<body>
+    <div class="page-watermark"><img src="assets/logo.png" alt=""></div>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img src="assets/logo.png" alt="Logo" style="width:40px; margin-bottom:0.5rem;">
+                <h2>Secure Exam</h2>
+                <p>Admin Portal</p>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="dashboard.html">📊 Dashboard</a></li>
+                    <li><a href="exams.html">📝 Exams</a></li>
+                    <li class="active"><a href="upload-paper.html">📄 Exam Papers</a></li>
+                    <li><a href="centers.html">🏛️ Centers</a></li>
+                    <li><a href="biometrics.html">🔐 Biometrics</a></li>
+                    <li><a href="users.html">👥 Users</a></li>
+                    <li><a href="activity-logs.html">📋 Activity Logs</a></li>
+                    <li><a href="settings.html">⚙️ Settings</a></li>
+                    <li><a href="#" onclick="logout(); return false;">🚪 Logout</a></li>
+                </ul>
+            </nav>
+        </aside>
+        <main class="main-content">
+            <img src="assets/exam_classroom.jpg" alt="Hero" class="hero-banner">
+            <h1>Upload Exam Paper</h1>
+            <div style="margin-bottom:20px;">
+                <label>Select Exam: </label>
+                <select id="examSelect" style="padding:8px; width:300px;" onchange="loadPapers()">
+                    <option value="">-- Select Exam --</option>
+                </select>
+            </div>
+            
+            <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                <p>Drag and drop exam paper PDF here, or click to select</p>
+                <input type="file" id="fileInput" style="display:none" accept=".pdf" onchange="handleFileSelect(event)">
+                <div id="fileInfo" style="margin-top:10px; font-weight:bold;"></div>
+            </div>
+            <button onclick="uploadPaper()" style="padding:10px 20px; background:#28a745; color:#fff; border:none; border-radius:4px; cursor:pointer;">Upload Paper</button>
+
+            <h2 style="margin-top:40px;">Uploaded Papers</h2>
+            <table class="data-table" style="width:100%; border-collapse:collapse; margin-top:10px;">
+                <thead>
+                    <tr style="background:#f4f4f4; text-align:left;">
+                        <th style="padding:10px; border:1px solid #ddd;">File Name</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Size</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Date</th>
+                        <th style="padding:10px; border:1px solid #ddd;">Status</th>
+                    </tr>
+                </thead>
+                <tbody id="papersList"></tbody>
+            </table>
+        </main>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        requireAuth();
+        let selectedFile = null;
+
+        async function init() {
+            try {
+                const exams = await apiFetch('/api/exams/');
+                const sel = document.getElementById('examSelect');
+                exams.forEach(ex => {
+                    const opt = document.createElement('option');
+                    opt.value = ex.id;
+                    opt.textContent = `${ex.code || ex.exam_code} - ${ex.name}`;
+                    sel.appendChild(opt);
+                });
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        function handleFileSelect(e) {
+            const files = e.target.files || e.dataTransfer.files;
+            if (files.length > 0) {
+                selectedFile = files[0];
+                const sizeKB = (selectedFile.size / 1024).toFixed(2);
+                document.getElementById('fileInfo').textContent = `Selected: ${selectedFile.name} (${sizeKB} KB)`;
+            }
+        }
+
+        const dropZone = document.getElementById('dropZone');
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.background = '#e9ecef'; });
+        dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.style.background = '#f8f9fa'; });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.background = '#f8f9fa';
+            handleFileSelect(e);
+        });
+
+        async function uploadPaper() {
+            const examId = document.getElementById('examSelect').value;
+            if (!examId) return alert('Please select an exam first');
+            if (!selectedFile) return alert('Please select a file to upload');
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            try {
+                // apiFetch for FormData might need special handling depending on implementation,
+                // but standard fetch works if we don't set Content-Type header manually.
+                const token = localStorage.getItem('token');
+                const res = await fetch(`/api/exams/${examId}/upload`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+                if (!res.ok) throw new Error('Upload failed');
+                alert('Uploaded successfully');
+                selectedFile = null;
+                document.getElementById('fileInfo').textContent = '';
+                document.getElementById('fileInput').value = '';
+                loadPapers();
+            } catch (err) {
+                alert('Upload error');
+            }
+        }
+
+        async function loadPapers() {
+            const examId = document.getElementById('examSelect').value;
+            const tbody = document.getElementById('papersList');
+            tbody.innerHTML = '';
+            if (!examId) return;
+
+            try {
+                const papers = await apiFetch(`/api/exams/${examId}/papers`);
+                if (papers) {
+                    papers.forEach(p => {
+                        const tr = document.createElement('tr');
+                        const sizeKB = (p.size / 1024).toFixed(2);
+                        tr.innerHTML = `
+                            <td style="padding:10px; border:1px solid #ddd;">${p.filename || p.file_name}</td>
+                            <td style="padding:10px; border:1px solid #ddd;">${sizeKB} KB</td>
+                            <td style="padding:10px; border:1px solid #ddd;">${p.date || p.created_at}</td>
+                            <td style="padding:10px; border:1px solid #ddd;">Uploaded</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

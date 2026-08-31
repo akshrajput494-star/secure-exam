@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Center Dashboard - Secure Exam</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .page-watermark { position: fixed; bottom: 20px; right: 20px; opacity: 0.06; pointer-events: none; z-index: 0; }
+        .page-watermark img { width: 200px; }
+        .hero-banner { width: 100%; height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 20px; }
+        .exam-card { border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 20px; background: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .exam-card h3 { margin-top: 0; }
+        .timer { font-size: 1.5em; font-weight: bold; color: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="page-watermark"><img src="assets/logo.png" alt=""></div>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <img src="assets/logo.png" alt="Logo" style="width:40px; margin-bottom:0.5rem;">
+                <h2>Secure Exam</h2>
+                <p id="centerNameDisplay">Center Portal</p>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li class="active"><a href="center-dashboard.html">📊 Dashboard</a></li>
+                    <li><a href="#" onclick="logout(); return false;">🚪 Logout</a></li>
+                </ul>
+            </nav>
+        </aside>
+        <main class="main-content">
+            <img src="assets/exam_classroom.jpg" alt="Hero" class="hero-banner">
+            <h1>Today's Exams</h1>
+            <div id="examsContainer">Loading...</div>
+        </main>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        requireAuth();
+        let examsInterval;
+
+        async function init() {
+            const user = getUser();
+            if(user && user.center_name) {
+                document.getElementById('centerNameDisplay').textContent = user.center_name;
+            }
+
+            try {
+                const exams = await apiFetch('/api/exams/');
+                const today = new Date().toISOString().split('T')[0];
+                const todaysExams = (exams || []).filter(e => e.date === today);
+                
+                if (todaysExams.length === 0) {
+                    document.getElementById('examsContainer').innerHTML = '<p>No exams scheduled for today.</p>';
+                    return;
+                }
+                
+                renderExams(todaysExams);
+                if(examsInterval) clearInterval(examsInterval);
+                examsInterval = setInterval(() => renderExams(todaysExams), 1000);
+            } catch(err) {
+                document.getElementById('examsContainer').innerHTML = '<p>Error loading exams.</p>';
+            }
+        }
+
+        function renderExams(exams) {
+            const container = document.getElementById('examsContainer');
+            let html = '';
+            const now = new Date();
+            
+            exams.forEach(ex => {
+                // Parse exam datetime
+                // Assuming date is YYYY-MM-DD and time is HH:MM or HH:MM:SS
+                const examStart = new Date(`${ex.date}T${ex.time}`);
+                const isAvailable = now >= examStart;
+                
+                html += `<div class="exam-card">
+                    <h3>${ex.code || ex.exam_code} - ${ex.name}</h3>
+                    <p><strong>Subject:</strong> ${ex.subject}</p>
+                    <p><strong>Time:</strong> ${ex.time} (${ex.duration} mins)</p>
+                `;
+
+                if (isAvailable) {
+                    html += `
+                        <div style="margin-top:15px;">
+                            <a href="exam-viewer.html?exam_id=${ex.id}" style="padding:10px 20px; background:#28a745; color:white; text-decoration:none; border-radius:4px; display:inline-block;">View Paper</a>
+                        </div>
+                    `;
+                } else {
+                    const diff = examStart - now;
+                    const h = Math.floor(diff / 3600000);
+                    const m = Math.floor((diff % 3600000) / 60000);
+                    const s = Math.floor((diff % 60000) / 1000);
+                    html += `
+                        <p class="timer">Starts in: ${h}h ${m}m ${s}s</p>
+                        <p style="color:#666;">🔒 Exam paper is locked and will become available at the scheduled release time.</p>
+                    `;
+                }
+                html += '</div>';
+            });
+            
+            container.innerHTML = html;
+        }
+
+        init();
+    </script>
+</body>
+</html>
