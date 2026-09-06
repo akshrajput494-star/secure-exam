@@ -107,10 +107,77 @@ def create_app():
 
     return app
 
+def seed_initial_data(app):
+    from models import db, User, Center, Exam, ActivityLog
+    from flask_bcrypt import Bcrypt
+    from datetime import date, time, timedelta
+
+    bcrypt = Bcrypt(app)
+    if not User.query.filter_by(username='admin').first():
+        print("Auto-seeding initial database data...")
+        try:
+            # 1. Admin user
+            hashed_pw = bcrypt.generate_password_hash('admin123').decode('utf-8')
+            admin = User(username='admin', password_hash=hashed_pw, role='admin')
+            db.session.add(admin)
+
+            # 2. Centers
+            c1 = Center(center_code='C001', center_name='Main Test Center', address='123 Education Blvd')
+            c2 = Center(center_code='C002', center_name='City Exam Hall', address='456 University Ave')
+            c3 = Center(center_code='C003', center_name='District Center', address='789 School Road')
+            db.session.add_all([c1, c2, c3])
+            db.session.commit()
+
+            # 3. Center Users
+            hashed_pw_c = bcrypt.generate_password_hash('center123').decode('utf-8')
+            u1 = User(username='center_C001', password_hash=hashed_pw_c, role='center', center_id=c1.id)
+            u2 = User(username='center_C002', password_hash=hashed_pw_c, role='center', center_id=c2.id)
+            u3 = User(username='center_C003', password_hash=hashed_pw_c, role='center', center_id=c3.id)
+            db.session.add_all([u1, u2, u3])
+            db.session.commit()
+
+            # 4. Sample Exams
+            today = date.today()
+            e1 = Exam(
+                exam_code='MATH101', 
+                exam_name='Mathematics Advanced', 
+                subject='Mathematics', 
+                exam_date=today + timedelta(days=7),
+                start_time=time(9, 0),
+                duration=180
+            )
+            e2 = Exam(
+                exam_code='PHYS201', 
+                exam_name='Physics Fundamentals', 
+                subject='Physics', 
+                exam_date=today + timedelta(days=14),
+                start_time=time(14, 0),
+                duration=120
+            )
+            e3 = Exam(
+                exam_code='CHEM301', 
+                exam_name='Organic Chemistry', 
+                subject='Chemistry', 
+                exam_date=today + timedelta(days=21),
+                start_time=time(10, 30),
+                duration=150
+            )
+            db.session.add_all([e1, e2, e3])
+            db.session.commit()
+
+            l1 = ActivityLog(user_id=admin.id, action='System Initialized', status='Success')
+            db.session.add(l1)
+            db.session.commit()
+            print("Auto-seeding completed successfully.")
+        except Exception as err:
+            db.session.rollback()
+            print(f"Error during auto-seeding: {err}")
+
 app = create_app()
 
 with app.app_context():
     db.create_all()
+    seed_initial_data(app)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

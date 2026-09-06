@@ -24,10 +24,12 @@ async function apiFetch(endpoint, options = {}) {
     const response = await fetch(url, { ...options, headers });
     
     if (response.status === 401) {
-        localStorage.removeItem('secure_exam_token');
-        localStorage.removeItem('secure_exam_user');
-        window.location.href = 'index.html';
-        throw new Error('Session expired');
+        if (!endpoint.includes('/auth/login')) {
+            localStorage.removeItem('secure_exam_token');
+            localStorage.removeItem('secure_exam_user');
+            window.location.href = 'index.html';
+            throw new Error('Session expired');
+        }
     }
     
     const data = await response.json();
