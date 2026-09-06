@@ -23,6 +23,13 @@ def get_exams():
 @exams_bp.route('/', methods=['POST'])
 def create_exam():
     data = request.get_json()
+    if not data or not data.get('exam_code') or not data.get('exam_name'):
+        return jsonify({'message': 'Exam code and name are required'}), 400
+    
+    existing = Exam.query.filter_by(exam_code=data['exam_code']).first()
+    if existing:
+        return jsonify({'message': f"Exam code '{data['exam_code']}' already exists."}), 400
+    
     try:
         date_obj = datetime.strptime(data['exam_date'], '%Y-%m-%d').date()
         time_obj = datetime.strptime(data['start_time'], '%H:%M').time()
@@ -40,7 +47,8 @@ def create_exam():
         db.session.commit()
         return jsonify({'message': 'Exam created successfully', 'id': exam.id}), 201
     except Exception as e:
-        return jsonify({'message': str(e)}), 400
+        db.session.rollback()
+        return jsonify({'message': 'Failed to create exam: ' + str(e)}), 400
 
 @exams_bp.route('/<int:id>', methods=['PUT'])
 def update_exam(id):
