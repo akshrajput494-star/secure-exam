@@ -81,14 +81,14 @@
         </div>
     </div>
 
-    <script src="js/api.js"></script>
-    <script src="js/auth.js"></script>
+    <script src="js/api.js?v=3"></script>
+    <script src="js/auth.js?v=3"></script>
     <script>
         requireAuth();
 
         async function loadCenters() {
             try {
-                const res = await apiFetch('/api/centers/');
+                const res = await apiFetch('/centers/');
                 const tbody = document.getElementById('centersList');
                 tbody.innerHTML = '';
                 (res || []).forEach(c => {
@@ -140,9 +140,9 @@
             };
             try {
                 if (id) {
-                    await apiFetch(`/api/centers/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
+                    await apiFetch(`/centers/${id}`, { method: 'PUT', body: JSON.stringify(payload) });
                 } else {
-                    await apiFetch('/api/centers/', { method: 'POST', body: JSON.stringify(payload) });
+                    await apiFetch('/centers/', { method: 'POST', body: JSON.stringify(payload) });
                 }
                 closeModal();
                 loadCenters();
@@ -154,10 +154,10 @@
         async function deleteCenter(id) {
             if (confirm('Delete this center?')) {
                 try {
-                    await apiFetch(`/api/centers/${id}`, { method: 'DELETE' });
+                    await apiFetch(`/centers/${id}`, { method: 'DELETE' });
                     loadCenters();
                 } catch (err) {
-                    alert('Error deleting');
+                    alert(err.message || 'Error deleting center');
                 }
             }
         }

@@ -70,16 +70,16 @@
         </main>
     </div>
 
-    <script src="js/api.js"></script>
-    <script src="js/auth.js"></script>
+    <script src="js/api.js?v=3"></script>
+    <script src="js/auth.js?v=3"></script>
     <script>
         requireAuth();
 
         async function initFilters() {
             try {
                 const [centers, exams] = await Promise.all([
-                    apiFetch('/api/centers/'),
-                    apiFetch('/api/exams/')
+                    apiFetch('/centers/'),
+                    apiFetch('/exams/')
                 ]);
                 const cSel = document.getElementById('filterCenter');
                 (centers || []).forEach(c => {
@@ -109,7 +109,7 @@
             if(exam_id) params.append('exam_id', exam_id);
 
             try {
-                const res = await apiFetch(`/api/logs/?${params.toString()}`);
+                const res = await apiFetch(`/logs/?${params.toString()}`);
                 const tbody = document.getElementById('logsList');
                 tbody.innerHTML = '';
                 (res || []).forEach(l => {

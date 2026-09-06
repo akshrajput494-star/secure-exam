@@ -87,15 +87,16 @@
         </div>
     </div>
 
-    <script src="js/api.js"></script>
-    <script src="js/auth.js"></script>
+    <script src="js/api.js?v=3"></script>
+    <script src="js/auth.js?v=3"></script>
     <script>
         requireAuth();
 
         async function loadCenters() {
             try {
-                const res = await apiFetch('/api/centers/');
+                const res = await apiFetch('/centers/');
                 const sel = document.getElementById('bioCenter');
+                sel.innerHTML = '<option value="">-- Select Center --</option>';
                 (res || []).forEach(c => {
                     const opt = document.createElement('option');
                     opt.value = c.id;
@@ -107,7 +108,7 @@
 
         async function loadBio() {
             try {
-                const res = await apiFetch('/api/biometrics/');
+                const res = await apiFetch('/biometrics/');
                 const tbody = document.getElementById('bioList');
                 tbody.innerHTML = '';
                 (res || []).forEach(b => {
@@ -116,8 +117,8 @@
                         <td style="padding:10px; border:1px solid #ddd;">${b.center_name || b.center_id}</td>
                         <td style="padding:10px; border:1px solid #ddd;">${b.head_name}</td>
                         <td style="padding:10px; border:1px solid #ddd;">${b.designation}</td>
-                        <td style="padding:10px; border:1px solid #ddd;">${b.filename || 'File'}</td>
-                        <td style="padding:10px; border:1px solid #ddd;">${b.created_at || b.date || ''}</td>
+                        <td style="padding:10px; border:1px solid #ddd;">${b.file_name || b.filename || 'File'}</td>
+                        <td style="padding:10px; border:1px solid #ddd;">${b.uploaded_at || b.created_at || ''}</td>
                         <td style="padding:10px; border:1px solid #ddd;">
                             <button onclick="deleteBio('${b.id}')">Delete</button>
                         </td>
@@ -136,7 +137,7 @@
             document.getElementById('bioModal').style.display = 'none';
         }
 
-        async function uploadBio(e) {
+        async function saveBio(e) {
             e.preventDefault();
             const formData = new FormData();
             formData.append('center_id', document.getElementById('bioCenter').value);
@@ -145,24 +146,21 @@
             formData.append('file', document.getElementById('bioFile').files[0]);
 
             try {
-                const token = localStorage.getItem('token');
-                const res = await fetch('/api/biometrics/', {
+                await apiFetch('/biometrics/', {
                     method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` },
                     body: formData
                 });
-                if(!res.ok) throw new Error('Upload failed');
                 closeModal();
                 loadBio();
-            } catch (err) { alert('Error uploading'); }
+            } catch (err) { alert(err.message || 'Error uploading biometric'); }
         }
 
         async function deleteBio(id) {
-            if(confirm('Delete?')) {
+            if(confirm('Delete this biometric record?')) {
                 try {
-                    await apiFetch(`/api/biometrics/${id}`, { method: 'DELETE' });
+                    await apiFetch(`/biometrics/${id}`, { method: 'DELETE' });
                     loadBio();
-                } catch(err) { alert('Error deleting'); }
+                } catch(err) { alert(err.message || 'Error deleting biometric'); }
             }
         }
 

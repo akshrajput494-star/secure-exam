@@ -10,17 +10,16 @@ function getUser() {
 }
 
 async function apiFetch(endpoint, options = {}) {
-    let cleanEndpoint = endpoint || '';
-    if (cleanEndpoint.startsWith('/api/')) {
-        cleanEndpoint = cleanEndpoint.substring(4);
-    } else if (cleanEndpoint.startsWith('/api')) {
-        cleanEndpoint = cleanEndpoint.substring(4);
-    }
-    if (!cleanEndpoint.startsWith('/')) {
-        cleanEndpoint = '/' + cleanEndpoint;
+    let url = endpoint || '';
+    if (!url.startsWith('/')) {
+        url = '/' + url;
     }
     
-    const url = API_BASE_URL + cleanEndpoint;
+    // Ensure URL starts with /api exactly once
+    if (!url.startsWith('/api/') && url !== '/api') {
+        url = '/api' + url;
+    }
+
     const headers = { ...options.headers };
     
     const token = getToken();
@@ -34,7 +33,7 @@ async function apiFetch(endpoint, options = {}) {
     const response = await fetch(url, { ...options, headers });
     
     if (response.status === 401) {
-        if (!cleanEndpoint.includes('/auth/login')) {
+        if (!url.includes('/auth/login')) {
             localStorage.removeItem('secure_exam_token');
             localStorage.removeItem('secure_exam_user');
             window.location.href = 'index.html';

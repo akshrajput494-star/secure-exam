@@ -37,8 +37,8 @@
         </main>
     </div>
 
-    <script src="js/api.js"></script>
-    <script src="js/auth.js"></script>
+    <script src="js/api.js?v=3"></script>
+    <script src="js/auth.js?v=3"></script>
     <script>
         requireAuth();
         let examsInterval;
@@ -50,7 +50,7 @@
             }
 
             try {
-                const exams = await apiFetch('/api/exams/');
+                const exams = await apiFetch('/exams/');
                 const today = new Date().toISOString().split('T')[0];
                 const todaysExams = (exams || []).filter(e => e.date === today);
                 

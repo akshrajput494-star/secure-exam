@@ -74,8 +74,8 @@
         <div class="page-watermark"><img src="assets/logo.png" alt=""></div>
     </div>
 
-    <script src="js/api.js"></script>
-    <script src="js/auth.js"></script>
+    <script src="js/api.js?v=3"></script>
+    <script src="js/auth.js?v=3"></script>
     <script>
         requireAuth();
         
@@ -117,34 +117,25 @@
             }
 
             try {
-                // Ideally fetch exam details to show title
-                const exams = await apiFetch('/api/exams/');
-                const ex = exams.find(e => e.id == examId);
+                // Fetch exam details
+                const exams = await apiFetch('/exams/');
+                const ex = (exams || []).find(e => e.id == examId);
                 if(ex) {
-                    document.getElementById('examTitle').textContent = `${ex.code || ex.exam_code} - ${ex.name}`;
+                    document.getElementById('examTitle').textContent = `${ex.code || ex.exam_code} - ${ex.name || ex.exam_name}`;
                 }
 
                 // Fetch paper list for this exam
-                const papers = await apiFetch(`/api/exams/${examId}/papers`);
+                const papers = await apiFetch(`/exams/${examId}/papers`);
                 if(papers && papers.length > 0) {
-                    // Just show the first one or the specific one
                     const paper = papers[0];
-                    // Using download endpoint for viewing
-                    const token = localStorage.getItem('token');
-                    // We can embed the authenticated fetch directly by creating an object URL if the API requires auth
-                    const res = await fetch(`/api/exams/${examId}/download/${paper.id}`, {
+                    const token = getToken();
+                    const res = await fetch(`/api/exams/papers/${paper.id}/download`, {
                         headers: { 'Authorization': `Bearer ${token}` }
                     });
                     if(res.ok) {
                         const blob = await res.blob();
                         const url = URL.createObjectURL(blob);
                         document.getElementById('pdfFrame').src = url;
-                        
-                        // Log download/view activity
-                        apiFetch('/api/logs/', {
-                            method: 'POST',
-                            body: JSON.stringify({ action: 'Download', exam_id: examId })
-                        }).catch(e => console.log('log err', e));
                     } else {
                         document.getElementById('examTitle').textContent += ' (Failed to load PDF)';
                     }
