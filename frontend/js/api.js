@@ -57,3 +57,44 @@ function showToast(message, type = 'success') {
     container.appendChild(toast);
     setTimeout(() => toast.remove(), 3000);
 }
+
+// Automatically initialize responsive mobile sidebar toggle on all pages
+document.addEventListener('DOMContentLoaded', () => {
+    const sidebar = document.querySelector('.sidebar');
+    const header = document.querySelector('.sidebar-header');
+    
+    if (sidebar && header && !header.querySelector('.sidebar-toggle-btn')) {
+        const toggleBtn = document.createElement('button');
+        toggleBtn.type = 'button';
+        toggleBtn.className = 'sidebar-toggle-btn';
+        toggleBtn.setAttribute('aria-label', 'Toggle Navigation');
+        toggleBtn.innerHTML = '☰';
+        
+        toggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            sidebar.classList.toggle('mobile-open');
+            const isOpen = sidebar.classList.contains('mobile-open');
+            toggleBtn.innerHTML = isOpen ? '✕' : '☰';
+        });
+        
+        header.appendChild(toggleBtn);
+        
+        // Close menu when clicking outside on mobile
+        document.addEventListener('click', (e) => {
+            if (sidebar.classList.contains('mobile-open') && !sidebar.contains(e.target)) {
+                sidebar.classList.remove('mobile-open');
+                toggleBtn.innerHTML = '☰';
+            }
+        });
+
+        // Close menu when any nav link is tapped on mobile
+        const navLinks = sidebar.querySelectorAll('.sidebar-nav a');
+        navLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                sidebar.classList.remove('mobile-open');
+                toggleBtn.innerHTML = '☰';
+            });
+        });
+    }
+});
+

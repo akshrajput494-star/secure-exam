@@ -23,6 +23,27 @@
         .page-watermark { position: absolute; bottom: 20px; right: 20px; opacity: 0.1; pointer-events: none; z-index: 5; }
         .page-watermark img { width: 300px; }
         
+        @media (max-width: 600px) {
+            .header {
+                flex-direction: column !important;
+                gap: 0.5rem !important;
+                align-items: flex-start !important;
+                padding: 0.75rem 1rem !important;
+            }
+            .header h1 {
+                font-size: 1.05rem !important;
+            }
+            .header > div {
+                display: flex !important;
+                align-items: center !important;
+                justify-content: space-between !important;
+                width: 100% !important;
+            }
+            .pdf-container {
+                height: calc(100vh - 90px) !important;
+            }
+        }
+        
         @media print {
             .header, button { display: none !important; }
             .pdf-container { height: 100%; }
