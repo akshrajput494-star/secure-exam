@@ -10,7 +10,17 @@ function getUser() {
 }
 
 async function apiFetch(endpoint, options = {}) {
-    const url = API_BASE_URL + endpoint;
+    let cleanEndpoint = endpoint || '';
+    if (cleanEndpoint.startsWith('/api/')) {
+        cleanEndpoint = cleanEndpoint.substring(4);
+    } else if (cleanEndpoint.startsWith('/api')) {
+        cleanEndpoint = cleanEndpoint.substring(4);
+    }
+    if (!cleanEndpoint.startsWith('/')) {
+        cleanEndpoint = '/' + cleanEndpoint;
+    }
+    
+    const url = API_BASE_URL + cleanEndpoint;
     const headers = { ...options.headers };
     
     const token = getToken();
@@ -24,7 +34,7 @@ async function apiFetch(endpoint, options = {}) {
     const response = await fetch(url, { ...options, headers });
     
     if (response.status === 401) {
-        if (!endpoint.includes('/auth/login')) {
+        if (!cleanEndpoint.includes('/auth/login')) {
             localStorage.removeItem('secure_exam_token');
             localStorage.removeItem('secure_exam_user');
             window.location.href = 'index.html';
@@ -32,8 +42,19 @@ async function apiFetch(endpoint, options = {}) {
         }
     }
     
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message || 'Request failed');
+    const contentType = response.headers.get('content-type') || '';
+    let data;
+    if (contentType.includes('application/json')) {
+        data = await response.json();
+    } else {
+        const text = await response.text();
+        if (!response.ok) {
+            throw new Error(`Server error (${response.status})`);
+        }
+        data = { message: text };
+    }
+    
+    if (!response.ok) throw new Error((data && data.message) ? data.message : `Request failed (${response.status})`);
     return data;
 }
 
@@ -97,4 +118,3 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
-
