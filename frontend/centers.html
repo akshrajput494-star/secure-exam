@@ -147,7 +147,7 @@
                 closeModal();
                 loadCenters();
             } catch (err) {
-                alert('Error saving center');
+                alert(err.message || 'Error saving center');
             }
         }
 
